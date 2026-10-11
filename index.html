@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMUTT ShortURL - ระบบย่อลิงก์ถาวรและวิเคราะห์ข้อมูลเชิงลึก</title>
+    
+    <!-- Google Fonts: Prompt -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        rmutt: {
+                            blue: '#003366',
+                            gold: '#D4AF37',
+                            light: '#004080',
+                            accent: '#2563eb'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js for Analytics CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- QRCode.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .gradient-header {
+            background: linear-gradient(135deg, #002244 0%, #003366 50%, #004080 100%);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 bg-slate-50">
+
+    <!-- Navigation Bar -->
+    <header class="gradient-header text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <!-- Brand Logo & Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-md text-rmutt-blue font-bold text-2xl border-2 border-rmutt-gold">
+                        <i class="fa-solid fa-link"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-xl sm:text-2xl tracking-tight text-white">RMUTT</span>
+                            <span class="bg-rmutt-gold text-slate-900 font-semibold text-xs px-2 py-0.5 rounded-full">ShortURL</span>
+                        </div>
+                        <p class="text-xs text-blue-200">ระบบย่อลิงก์ถาวรและวิเคราะห์ข้อมูลเชิงลึก</p>
+                    </div>
+                </div>
+
+                <!-- Domain Info Badge & Quick Actions -->
+                <div class="flex items-center space-x-3">
+                    <div class="hidden md:flex items-center space-x-2 bg-blue-900/60 border border-blue-400/30 px-3 py-1.5 rounded-lg text-xs">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span class="text-blue-100">Domain: <strong class="text-white">rmutt-shorturl.onrender.com</strong></span>
+                    </div>
+                    <button onclick="openRedirectSimulatorModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-medium px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition flex items-center space-x-2 shadow-md">
+                        <i class="fa-solid fa-flask"></i>
+                        <span>ทดสอบเปิด Short Link</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Shortener Hero Card -->
+        <section class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+            <div class="gradient-header p-6 sm:p-8 text-white relative">
+                <div class="max-w-3xl space-y-2">
+                    <div class="inline-flex items-center space-x-2 bg-white/10 px-3 py-1 rounded-full text-xs font-medium text-amber-300">
+                        <i class="fa-solid fa-infinity"></i>
+                        <span>อายุลิงก์ถาวร - ไม่จำกัดเวลา - ไม่ถูกลบ</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">ย่อลิงก์ให้สั้นลง พร้อมติดตามสถิติจำนวนการกด</h1>
+                    <p class="text-blue-100 text-sm sm:text-base">วาง URL เว็บไซต์ภายนอกของคุณ เพื่อแปลงเป็นลิงก์ย่อ <code class="bg-black/30 px-2 py-0.5 rounded text-amber-300 font-mono text-xs">rmutt-shorturl.onrender.com/...</code></p>
+                </div>
+            </div>
+
+            <!-- Form Body -->
+            <div class="p-6 sm:p-8 space-y-6">
+                <form id="shortenForm" onsubmit="handleCreateShortLink(event)" class="space-y-4">
+                    <div class="space-y-2">
+                        <label for="longUrl" class="block text-sm font-semibold text-slate-700">
+                            วาง URL ลิงก์ภายนอกที่คุณต้องการย่อ <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative rounded-xl shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-globe text-lg"></i>
+                            </div>
+                            <input type="url" id="longUrl" required placeholder="https://example.com/very-long-article-url-address"
+                                class="block w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rmutt-blue focus:border-transparent text-sm sm:text-base transition">
+                        </div>
+                    </div>
+
+                    <!-- Custom Slug & Title Options -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <div class="space-y-1">
+                            <label for="customTitle" class="block text-xs font-semibold text-slate-600">
+                                ชื่อเรียกอ้างอิงลิงก์ (Optional Title)
+                            </label>
+                            <input type="text" id="customTitle" placeholder="เช่น เว็บสมัครเรียน RMUTT 2026"
+                                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-rmutt-blue">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label for="customAlias" class="block text-xs font-semibold text-slate-600">
+                                กำหนดคำต่อท้ายเอง (Custom Short Code)
+                            </label>
+                            <div class="flex rounded-lg shadow-sm">
+                                <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-xs font-mono">
+                                    rmutt-shorturl.onrender.com/
+                                </span>
+                                <input type="text" id="customAlias" placeholder="my-custom-code" pattern="[a-zA-Z0-9-_]+" title="ใช้อักขระภาษาอังกฤษ ตัวเลข - หรือ _ เท่านั้น"
+                                    class="flex-1 min-w-0 block w-full px-3 py-2.5 rounded-none rounded-r-lg bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-rmutt-blue">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="pt-2">
+                        <button type="submit" id="submitBtn" class="w-full sm:w-auto px-8 py-3.5 bg-rmutt-blue hover:bg-rmutt-light text-white font-semibold rounded-xl shadow-lg shadow-blue-900/20 hover:shadow-xl transition flex items-center justify-center space-x-2 text-base">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>สร้าง Short Link ถาวร</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Newly Created Link Banner -->
+                <div id="newLinkBanner" class="hidden bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-6 transition-all duration-300 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2 text-emerald-800 font-bold">
+                            <i class="fa-solid fa-circle-check text-xl text-emerald-600"></i>
+                            <span>สร้าง Short Link ถาวรเรียบร้อยแล้ว!</span>
+                        </div>
+                        <span class="bg-emerald-200 text-emerald-900 text-xs px-2.5 py-1 rounded-full font-medium">พร้อมใช้งาน</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center bg-white p-4 rounded-xl border border-emerald-200 shadow-sm">
+                        <div class="md:col-span-2 space-y-1">
+                            <p class="text-xs font-medium text-slate-500">Short Link ของคุณ (Domain: rmutt-shorturl.onrender.com):</p>
+                            <a id="bannerShortUrlLink" href="#" target="_blank" class="text-lg sm:text-xl font-bold font-mono text-rmutt-blue hover:underline break-all">
+                                https://rmutt-shorturl.onrender.com/xxxx
+                            </a>
+                            <p class="text-xs text-slate-500 truncate mt-1">
+                                ปลายทาง: <span id="bannerTargetUrl" class="text-slate-700">https://...</span>
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 md:justify-end">
+                            <button id="copyBannerBtn" onclick="copyTextToClipboard(document.getElementById('bannerShortUrlLink').innerText)"
+                                class="flex-1 sm:flex-none px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-medium flex items-center justify-center space-x-1.5 transition">
+                                <i class="fa-regular fa-copy"></i>
+                                <span>คัดลอก</span>
+                            </button>
+                            <button onclick="testRedirectByCode(window.currentCreatedCode)"
+                                class="flex-1 sm:flex-none px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                <span>ทดสอบเปิด</span>
+                            </button>
+                            <button onclick="showQRCodeForCurrentCode()"
+                                class="flex-1 sm:flex-none px-3 py-2 bg-blue-100 text-rmutt-blue hover:bg-blue-200 rounded-lg text-xs font-medium flex items-center justify-center space-x-1 transition">
+                                <i class="fa-solid fa-qrcode"></i>
+                                <span>QR Code</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics & Links Dashboard Header -->
+        <section class="space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-line text-rmutt-blue"></i>
+                        <span>รายการ Short Link ทั้งหมด และ สถิติการคลิก</span>
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-500">ข้อมูลจะถูกจัดเก็บในระบบคลาวด์ Firebase อย่างถาวร ไม่สูญหาย</p>
+                </div>
+                <!-- Stat Summary Badges -->
+                <div class="flex items-center space-x-3 text-xs sm:text-sm">
+                    <div class="bg-white px-3.5 py-2 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-2">
+                        <i class="fa-solid fa-link text-blue-600"></i>
+                        <span class="text-slate-500">รวมทั้งหมด:</span>
+                        <strong id="totalLinksCount" class="text-slate-900 text-base">0</strong>
+                    </div>
+                    <div class="bg-white px-3.5 py-2 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-2">
+                        <i class="fa-solid fa-eye text-emerald-600"></i>
+                        <span class="text-slate-500">การกดเปิดรวม:</span>
+                        <strong id="totalClicksCount" class="text-slate-900 text-base">0</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search and Filter Bar -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="relative w-full sm:w-80">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="searchInput" oninput="renderUrlList()" placeholder="ค้นหาชื่อ, รหัสย่อ หรือ URL ต้นทาง..."
+                        class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rmutt-blue">
+                </div>
+                <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                    <span class="text-xs text-slate-500">เรียงตาม:</span>
+                    <select id="sortBySelect" onchange="renderUrlList()" class="bg-slate-50 border border-slate-200 text-xs sm:text-sm rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-rmutt-blue">
+                        <option value="newest">สร้างล่าสุด</option>
+                        <option value="clicks">จำนวนการเปิดสูงสุด (Clicks)</option>
+                        <option value="oldest">เก่าสุด</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- URL List Container -->
+            <div id="urlListContainer" class="space-y-3">
+                <!-- Loading Skeleton -->
+                <div id="loadingSkeleton" class="p-8 text-center bg-white rounded-xl border border-slate-200">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-rmutt-blue border-t-transparent mb-2"></div>
+                    <p class="text-xs text-slate-500">กำลังเชื่อมต่อข้อมูลจาก Firebase...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Analytics Modal -->
+    <div id="analyticsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-slate-100 flex flex-col">
+            <!-- Modal Header -->
+            <div class="gradient-header text-white p-6 rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-amber-400 text-slate-900 rounded-xl flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-chart-column text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg">รายงานสถิติการเปิดดูข้อมูลเชิงลึก</h3>
+                        <p id="analyticsShortUrl" class="text-xs font-mono text-amber-200">rmutt-shorturl.onrender.com/...</p>
+                    </div>
+                </div>
+                <button onclick="closeAnalyticsModal()" class="text-slate-300 hover:text-white p-2 rounded-lg hover:bg-white/10 transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6 space-y-6 flex-grow">
+                <!-- Stat Cards Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                        <p class="text-xs text-blue-600 font-medium">จำนวนการกดเปิดรวม</p>
+                        <p id="analyticsTotalClicks" class="text-3xl font-bold text-rmutt-blue mt-1">0</p>
+                        <span class="text-[10px] text-blue-500">ครั้งผ่าน Short Link นี้</span>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                        <p class="text-xs text-amber-700 font-medium">อายุของลิงก์</p>
+                        <p class="text-xl font-bold text-amber-900 mt-1">ถาวร (Unlimited)</p>
+                        <span class="text-[10px] text-amber-600">ไม่มีวันหมดอายุ</span>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                        <p class="text-xs text-slate-500 font-medium">วันที่ถูกสร้าง</p>
+                        <p id="analyticsCreatedDate" class="text-sm font-semibold text-slate-800 mt-2">-</p>
+                        <span class="text-[10px] text-slate-400">บันทึกบน Firebase</span>
+                    </div>
+                </div>
+
+                <!-- Original Link Detail Card -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
+                    <p class="text-xs font-semibold text-slate-500">ลิงก์ต้นทางภายนอก (Original Target URL):</p>
+                    <a id="analyticsOriginalUrl" href="#" target="_blank" class="text-sm font-medium text-blue-600 hover:underline break-all block">
+                        https://...
+                    </a>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="space-y-2">
+                    <h4 class="text-sm font-bold text-slate-800 flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-line text-rmutt-blue"></i>
+                        <span>แนวโน้มการเข้าชมตามช่วงเวลา (Click Analytics Trend)</span>
+                    </h4>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm min-h-[220px]">
+                        <canvas id="clickChart" class="max-h-[220px] w-full"></canvas>
+                    </div>
+                </div>
+
+                <!-- Click Logs Breakdown -->
+                <div class="space-y-2">
+                    <h4 class="text-sm font-bold text-slate-800">ประวัติการคลิกล่าสุด (Click Logs)</h4>
+                    <div class="border border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                        <table class="min-w-full divide-y divide-slate-200 text-xs">
+                            <thead class="bg-slate-100 text-slate-600 sticky top-0">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-semibold">เวลาเข้าชม</th>
+                                    <th class="px-3 py-2 text-left font-semibold">อุปกรณ์</th>
+                                    <th class="px-3 py-2 text-left font-semibold">แหล่งที่มา</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analyticsLogsBody" class="divide-y divide-slate-100 bg-white">
+                                <!-- Log rows dynamically inserted -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 rounded-b-2xl flex justify-end">
+                <button onclick="closeAnalyticsModal()" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium text-xs rounded-lg transition">
+                    ปิดหน้าต่าง
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4 border border-slate-100">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-base">QR Code สำหรับ Short Link</h3>
+                <button onclick="closeQRModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="bg-slate-50 p-4 rounded-xl flex justify-center border border-slate-200 shadow-inner">
+                <div id="qrcodeCanvas"></div>
+            </div>
+            <p id="qrShortCodeText" class="text-xs font-mono font-bold text-rmutt-blue break-all">rmutt-shorturl.onrender.com/...</p>
+            <div class="pt-2 flex gap-2">
+                <button onclick="closeQRModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Redirect Simulator / Tester Modal -->
+    <div id="redirectModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5 border border-slate-100">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl mx-auto flex items-center justify-center text-2xl font-bold shadow-sm">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900">ระบบจำลองการเปิดลิงก์ (Link Redirect Simulator)</h3>
+                <p class="text-xs text-slate-500">ป้อนรหัสย่อ หรือเลือกกดทดสอบเพื่อจำลองการเปิดลิงก์ผ่านโดเมน <code class="text-rmutt-blue font-bold">rmutt-shorturl.onrender.com</code></p>
+            </div>
+
+            <div class="space-y-3">
+                <label class="block text-xs font-semibold text-slate-700">ระบุรหัส Short Code ที่ต้องการเปิด:</label>
+                <div class="flex rounded-lg shadow-sm">
+                    <span class="inline-flex items-center px-2.5 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-xs font-mono">
+                        rmutt-shorturl.onrender.com/
+                    </span>
+                    <input type="text" id="simulatedCodeInput" placeholder="รหัสย่อ เช่น rmutt123" class="flex-1 min-w-0 block w-full px-3 py-2 border border-slate-200 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-rmutt-blue">
+                </div>
+            </div>
+
+            <div class="bg-amber-50 p-3 rounded-lg border border-amber-200 text-xs text-amber-900 space-y-1">
+                <p class="font-semibold"><i class="fa-solid fa-circle-info"></i> เมื่อคุณเปิดทดสอบ:</p>
+                <ul class="list-disc list-inside space-y-0.5 text-[11px] text-amber-800">
+                    <li>ระบบจะนับ +1 จำนวน Click ลงใน Firebase อัตโนมัติ</li>
+                    <li>ระบบจะเปิดเว็บไซต์ภายนอกที่เป็นปลายทางจริงขึ้นมา</li>
+                </ul>
+            </div>
+
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeRedirectSimulatorModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium">ยกเลิก</button>
+                <button onclick="executeSimulatedRedirect()" class="w-1/2 py-2.5 bg-rmutt-blue hover:bg-rmutt-light text-white rounded-lg text-xs font-semibold shadow-md">
+                    เปิดเว็บปลายทางทันที
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4 border border-slate-100">
+            <div class="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl mx-auto flex items-center justify-center text-2xl font-bold shadow-sm">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <div class="space-y-1">
+                <h3 class="text-lg font-bold text-slate-900">ยืนยันการลบ Short Link?</h3>
+                <p class="text-xs text-slate-500">คุณแน่ใจหรือไม่ว่าต้องการลบลิงก์ย่อรหัส <code id="deleteCodeText" class="text-rose-600 font-mono font-bold"></code> ?</p>
+                <p class="text-[11px] text-rose-500 font-medium">⚠️ การลบนี้จะนำข้อมูลออกจาก Firebase และไม่สามารถกู้คืนได้</p>
+            </div>
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeDeleteModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">ยกเลิก</button>
+                <button id="confirmDeleteBtn" onclick="executeDeleteLink()" class="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-md transition">
+                    ยืนยันลบข้อมูล
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl z-50 hidden flex items-center space-x-3 text-xs sm:text-sm border border-slate-700">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <span id="toastMessage">ข้อความแจ้งเตือน</span>
+    </div>
+
+    <!-- Firebase JS SDK Modules -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            getDoc, 
+            setDoc, 
+            updateDoc, 
+            deleteDoc,
+            onSnapshot, 
+            arrayUnion, 
+            increment 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase state & configs
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'rmutt-shorturl-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "AIzaSyAVD2TBM6a3T8yw4y8u6btjNV97Ku5jJUI",
+                authDomain: "mind-001.firebaseapp.com",
+                projectId: "mind-001",
+                storageBucket: "mind-001.firebasestorage.app",
+                messagingSenderId: "1084364342738",
+                appId: "1:1084364342738:web:34dd747d1178526e3e340b",
+                measurementId: "G-WYE30CDE7K"
+            };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Firestore Public Collection Reference
+        const URLS_COLLECTION_REF = collection(db, 'artifacts', appId, 'public', 'data', 'short_urls');
+
+        // State Variables
+        let currentUser = null;
+        let shortUrlsData = [];
+        let currentChartInstance = null;
+        window.currentCreatedCode = '';
+
+        // Authentication & Initialization
+        async function initApp() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = userCredential.user;
+                } else {
+                    const userCredential = await signInAnonymously(auth);
+                    currentUser = userCredential.user;
+                }
+                console.log("Firebase Auth Authenticated UID:", currentUser.uid);
+
+                // Check URL parameter redirect
+                await checkUrlParameterRedirect();
+
+                // Start Listening to Firestore URL collection Realtime
+                listenToUrlsData();
+            } catch (error) {
+                console.error("Firebase Authentication error:", error);
+            }
+        }
+
+        // Helper: Check URL parameter and Auto-Redirect
+        async function checkUrlParameterRedirect() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code') || urlParams.get('c') || window.location.hash.replace('#', '');
+
+            if (code) {
+                // Show redirection overlay
+                document.body.innerHTML = `
+                    <div class="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 text-center space-y-4">
+                        <div class="w-16 h-16 border-4 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                        <h2 class="text-xl font-bold">กำลังเชื่อมต่อไปยังเว็บไซต์ปลายทาง...</h2>
+                        <p class="text-sm text-slate-400">รหัสย่อ: <code class="text-amber-300 font-mono">${escapeHtml(code)}</code></p>
+                        <p class="text-xs text-slate-500">ระบบกำลังบันทึกสถิติการเข้าชมลงใน Firebase</p>
+                    </div>
+                `;
+
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'short_urls', code);
+                    const docSnap = await getDoc(docRef);
+
+                    if (docSnap.exists()) {
+                        const itemData = docSnap.data();
+                        
+                        // Increment click count in Firebase
+                        const clickLog = {
+                            timestamp: new Date().toISOString(),
+                            device: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
+                            referrer: document.referrer || 'Direct Shared Link'
+                        };
+
+                        await updateDoc(docRef, {
+                            clickCount: increment(1),
+                            clickHistory: arrayUnion(clickLog)
+                        });
+
+                        // Redirect to original URL
+                        window.location.href = itemData.originalUrl;
+                    } else {
+                        alert("ไม่พบข้อมูล Short Link รหัสนี้ในระบบ");
+                        window.location.href = window.location.pathname;
+                    }
+                } catch (err) {
+                    console.error("Redirect Error:", err);
+                    alert("เกิดข้อผิดพลาดในการเชื่อมต่อกรุณาลองใหม่อีกครั้ง");
+                    window.location.href = window.location.pathname;
+                }
+            }
+        }
+
+        // Realtime Listener for URLs
+        function listenToUrlsData() {
+            onSnapshot(URLS_COLLECTION_REF, (snapshot) => {
+                shortUrlsData = [];
+                snapshot.forEach((docSnap) => {
+                    shortUrlsData.push({
+                        id: docSnap.id,
+                        ...docSnap.data()
+                    });
+                });
+
+                document.getElementById('loadingSkeleton')?.classList.add('hidden');
+                updateDashboardStats();
+                window.renderUrlList();
+            }, (error) => {
+                console.error("Firestore Listen Error:", error);
+                showToast("ไม่สามารถโหลดข้อมูลจาก Firebase ได้", "error");
+            });
+        }
+
+        // Handle Form Submission - Create Short Link
+        window.handleCreateShortLink = async function(event) {
+            event.preventDefault();
+            if (!currentUser) {
+                showToast("กรุณารอการยืนยันตัวตนกับระบบก่อน", "error");
+                return;
+            }
+
+            const longUrlInput = document.getElementById('longUrl').value.trim();
+            const customTitleInput = document.getElementById('customTitle').value.trim();
+            const customAliasInput = document.getElementById('customAlias').value.trim();
+
+            if (!longUrlInput) return;
+
+            // Normalize URL format
+            let targetUrl = longUrlInput;
+            if (!/^https?:\/\//i.test(targetUrl)) {
+                targetUrl = 'https://' + targetUrl;
+            }
+
+            // Generate or validate short code
+            let shortCode = customAliasInput;
+            if (shortCode) {
+                const existing = shortUrlsData.find(item => item.shortCode === shortCode);
+                if (existing) {
+                    showToast(`รหัสย่อ "${shortCode}" ถูกใช้งานไปแล้ว กรุณาตั้งรหัสอื่น`, "error");
+                    return;
+                }
+            } else {
+                shortCode = generateRandomCode(6);
+            }
+
+            const domainPrefix = "https://rmutt-shorturl.onrender.com/";
+            const fullShortUrl = domainPrefix + shortCode;
+
+            const newUrlData = {
+                shortCode: shortCode,
+                fullShortUrl: fullShortUrl,
+                originalUrl: targetUrl,
+                title: customTitleInput || `ลิงก์ย่อ - ${shortCode}`,
+                createdAt: new Date().toISOString(),
+                clickCount: 0,
+                clickHistory: [],
+                isPermanent: true,
+                createdBy: currentUser.uid
+            };
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>กำลังบันทึกลง Firebase...</span>`;
+
+            try {
+                // Save to Firestore using shortCode as doc ID
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'short_urls', shortCode);
+                await setDoc(docRef, newUrlData);
+
+                window.currentCreatedCode = shortCode;
+                showCreatedBanner(fullShortUrl, targetUrl);
+                showToast("สร้าง Short Link ถาวรสำเร็จ!", "success");
+
+                document.getElementById('shortenForm').reset();
+            } catch (err) {
+                console.error("Error saving link:", err);
+                showToast("เกิดข้อผิดพลาดในการบันทึกข้อมูล", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> <span>สร้าง Short Link ถาวร</span>`;
+            }
+        };
+
+        function showCreatedBanner(shortUrl, targetUrl) {
+            const banner = document.getElementById('newLinkBanner');
+            document.getElementById('bannerShortUrlLink').innerText = shortUrl;
+            document.getElementById('bannerShortUrlLink').href = shortUrl;
+            document.getElementById('bannerTargetUrl').innerText = targetUrl;
+            banner.classList.remove('hidden');
+            banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Render URL Grid/List with Filter and Search
+        window.renderUrlList = function() {
+            const container = document.getElementById('urlListContainer');
+            if (!container) return;
+            const searchInput = document.getElementById('searchInput');
+            const sortBySelect = document.getElementById('sortBySelect');
+            const searchKeyword = searchInput ? searchInput.value.toLowerCase() : '';
+            const sortBy = sortBySelect ? sortBySelect.value : 'newest';
+
+            // Filter List
+            let filtered = shortUrlsData.filter(item => {
+                const title = (item.title || '').toLowerCase();
+                const code = (item.shortCode || '').toLowerCase();
+                const orig = (item.originalUrl || '').toLowerCase();
+                return title.includes(searchKeyword) || code.includes(searchKeyword) || orig.includes(searchKeyword);
+            });
+
+            // Sort List
+            filtered.sort((a, b) => {
+                if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+                if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+                if (sortBy === 'clicks') return (b.clickCount || 0) - (a.clickCount || 0);
+                return 0;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white p-12 text-center rounded-2xl border border-slate-200">
+                        <i class="fa-regular fa-folder-open text-4xl text-slate-300 mb-3 block"></i>
+                        <p class="text-sm font-semibold text-slate-600">ยังไม่พบข้อมูล Short Link</p>
+                        <p class="text-xs text-slate-400 mt-1">เริ่มต้นสร้าง Short Link แรกของคุณได้ที่ช่องด้านบน</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(item => {
+                const formattedDate = new Date(item.createdAt).toLocaleDateString('th-TH', {
+                    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+
+                return `
+                <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500" title="สถานะใช้งานได้ถาวร"></span>
+                            <h3 class="font-bold text-slate-800 text-sm sm:text-base">${escapeHtml(item.title || item.shortCode)}</h3>
+                            <span class="bg-blue-50 text-rmutt-blue text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-100">
+                                ♾️ ไม่มีหมดอายุ
+                            </span>
+                        </div>
+                        <div class="text-xs text-slate-400 flex items-center space-x-1">
+                            <i class="fa-regular fa-clock"></i>
+                            <span>สร้างเมื่อ: ${formattedDate}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                        <div class="md:col-span-7 space-y-1">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-slate-400">Short Link:</span>
+                                <span class="font-mono font-bold text-sm text-rmutt-blue bg-slate-50 px-2 py-0.5 rounded border border-slate-200 select-all">
+                                    https://rmutt-shorturl.onrender.com/${escapeHtml(item.shortCode)}
+                                </span>
+                            </div>
+                            <div class="text-xs text-slate-500 truncate" title="${escapeHtml(item.originalUrl)}">
+                                <span class="text-slate-400">ปลายทาง:</span> 
+                                <a href="${escapeHtml(item.originalUrl)}" target="_blank" class="hover:underline text-slate-700 font-medium">
+                                    ${escapeHtml(item.originalUrl)}
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-5 flex items-center justify-between md:justify-end gap-2">
+                            <div class="bg-amber-50 border border-amber-200 text-amber-900 px-3 py-1.5 rounded-lg text-center flex items-center space-x-1.5" title="จำนวนครั้งที่เปิดดู">
+                                <i class="fa-solid fa-chart-simple text-amber-600 text-xs"></i>
+                                <span class="text-xs font-semibold">เปิดแล้ว:</span>
+                                <strong class="text-sm font-bold text-amber-900">${item.clickCount || 0}</strong>
+                            </div>
+
+                            <div class="flex items-center space-x-1">
+                                <button onclick="copyTextToClipboard('https://rmutt-shorturl.onrender.com/${item.shortCode}')" title="คัดลอกลิงก์"
+                                    class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                                <button onclick="showQRCode('${item.shortCode}')" title="QR Code"
+                                    class="p-2 bg-blue-50 hover:bg-blue-100 text-rmutt-blue rounded-lg text-xs font-medium transition">
+                                    <i class="fa-solid fa-qrcode"></i>
+                                </button>
+                                <button onclick="testRedirectByCode('${item.shortCode}')" title="ทดสอบคลิกเปิดลิงก์"
+                                    class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-lg text-xs transition flex items-center space-x-1">
+                                    <i class="fa-solid fa-play text-[10px]"></i>
+                                    <span>ลองเปิด</span>
+                                </button>
+                                <button onclick="openAnalyticsModal('${item.shortCode}')" title="ดูสถิติเชิงลึก"
+                                    class="px-3 py-2 bg-rmutt-blue hover:bg-rmutt-light text-white font-medium rounded-lg text-xs shadow-sm transition flex items-center space-x-1">
+                                    <i class="fa-solid fa-chart-pie"></i>
+                                    <span>สถิติ</span>
+                                </button>
+                                <button onclick="openDeleteModal('${item.shortCode}')" title="ลบ Short Link"
+                                    class="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/60 rounded-lg text-xs font-medium transition">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        };
+
+        // Open Analytics Modal
+        window.openAnalyticsModal = function(code) {
+            const item = shortUrlsData.find(x => x.shortCode === code);
+            if (!item) return;
+
+            const modal = document.getElementById('analyticsModal');
+            document.getElementById('analyticsShortUrl').innerText = `rmutt-shorturl.onrender.com/${item.shortCode}`;
+            document.getElementById('analyticsTotalClicks').innerText = item.clickCount || 0;
+            document.getElementById('analyticsOriginalUrl').innerText = item.originalUrl;
+            document.getElementById('analyticsOriginalUrl').href = item.originalUrl;
+            document.getElementById('analyticsCreatedDate').innerText = new Date(item.createdAt).toLocaleDateString('th-TH');
+
+            const logsBody = document.getElementById('analyticsLogsBody');
+            const logs = item.clickHistory || [];
+            if (logs.length === 0) {
+                logsBody.innerHTML = `<tr><td colspan="3" class="px-3 py-4 text-center text-slate-400">ยังไม่มีประวัติการกดเปิดผ่าน Short Link นี้</td></tr>`;
+            } else {
+                logsBody.innerHTML = logs.slice(-10).reverse().map(log => `
+                    <tr>
+                        <td class="px-3 py-2 font-mono text-[11px] text-slate-600">${new Date(log.timestamp).toLocaleString('th-TH')}</td>
+                        <td class="px-3 py-2 text-slate-700">${escapeHtml(log.device || 'Desktop / Mobile')}</td>
+                        <td class="px-3 py-2 text-slate-500">${escapeHtml(log.referrer || 'Direct')}</td>
+                    </tr>
+                `).join('');
+            }
+
+            renderAnalyticsChart(logs);
+            modal.classList.remove('hidden');
+        };
+
+        window.closeAnalyticsModal = function() {
+            document.getElementById('analyticsModal').classList.add('hidden');
+        };
+
+        // Chart.js Visualization
+        function renderAnalyticsChart(logs) {
+            const ctx = document.getElementById('clickChart').getContext('2d');
+            if (currentChartInstance) {
+                currentChartInstance.destroy();
+            }
+
+            const dateCounts = {};
+            logs.forEach(log => {
+                const dateStr = new Date(log.timestamp).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' });
+                dateCounts[dateStr] = (dateCounts[dateStr] || 0) + 1;
+            });
+
+            const labels = Object.keys(dateCounts).length > 0 ? Object.keys(dateCounts) : ['ไม่มีข้อมูล'];
+            const dataValues = Object.keys(dateCounts).length > 0 ? Object.values(dateCounts) : [0];
+
+            currentChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'จำนวนการเปิดเข้าชม (Clicks)',
+                        data: dataValues,
+                        borderColor: '#003366',
+                        backgroundColor: 'rgba(0, 51, 102, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#D4AF37'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // Simulate Link Click & Increment Click Count in Firebase
+        window.testRedirectByCode = async function(code) {
+            const item = shortUrlsData.find(x => x.shortCode === code);
+            if (!item) {
+                showToast("ไม่พบข้อมูลรหัสลิงก์ย่อนี้", "error");
+                return;
+            }
+
+            showToast("กำลังประมวลผลการกดเปิด และบันทึกสถิติลง Firebase...", "info");
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'short_urls', code);
+                const clickLog = {
+                    timestamp: new Date().toISOString(),
+                    device: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
+                    referrer: 'Direct / RMUTT Platform'
+                };
+
+                await updateDoc(docRef, {
+                    clickCount: increment(1),
+                    clickHistory: arrayUnion(clickLog)
+                });
+
+                showToast("นับจำนวนการคลิก +1 สำเร็จ! กำลังเปิดหน้าเว็บปลายทาง...", "success");
+
+                setTimeout(() => {
+                    window.open(item.originalUrl, '_blank');
+                }, 800);
+
+            } catch (err) {
+                console.error("Error updating click count:", err);
+                window.open(item.originalUrl, '_blank');
+            }
+        };
+
+        // Redirect Simulator Modal Controls
+        window.openRedirectSimulatorModal = function() {
+            document.getElementById('redirectModal').classList.remove('hidden');
+        };
+
+        window.closeRedirectSimulatorModal = function() {
+            document.getElementById('redirectModal').classList.add('hidden');
+        };
+
+        window.executeSimulatedRedirect = function() {
+            const code = document.getElementById('simulatedCodeInput').value.trim();
+            if (!code) {
+                showToast("กรุณาระบุรหัส Short Code", "error");
+                return;
+            }
+            window.closeRedirectSimulatorModal();
+            window.testRedirectByCode(code);
+        };
+
+        // Delete Short Link Modal & Firebase Operation
+        window.codeToDelete = '';
+
+        window.openDeleteModal = function(code) {
+            window.codeToDelete = code;
+            document.getElementById('deleteCodeText').innerText = code;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        };
+
+        window.closeDeleteModal = function() {
+            window.codeToDelete = '';
+            document.getElementById('deleteModal').classList.add('hidden');
+        };
+
+        window.executeDeleteLink = async function() {
+            const code = window.codeToDelete;
+            if (!code) return;
+
+            const btn = document.getElementById('confirmDeleteBtn');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> ลบข้อมูล...`;
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'short_urls', code);
+                await deleteDoc(docRef);
+                showToast(`ลบ Short Link (${code}) เรียบร้อยแล้ว`, "success");
+                window.closeDeleteModal();
+            } catch (err) {
+                console.error("Error deleting link:", err);
+                showToast("เกิดข้อผิดพลาดในการลบข้อมูล", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `ยืนยันลบข้อมูล`;
+            }
+        };
+
+        // QR Code Functions
+        window.showQRCode = function(code) {
+            const fullUrl = `https://rmutt-shorturl.onrender.com/${code}`;
+            document.getElementById('qrShortCodeText').innerText = fullUrl;
+            
+            const qrContainer = document.getElementById('qrcodeCanvas');
+            qrContainer.innerHTML = '';
+            
+            new QRCode(qrContainer, {
+                text: fullUrl,
+                width: 180,
+                height: 180,
+                colorDark : "#003366",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('qrModal').classList.remove('hidden');
+        };
+
+        window.showQRCodeForCurrentCode = function() {
+            if (window.currentCreatedCode) window.showQRCode(window.currentCreatedCode);
+        };
+
+        window.closeQRModal = function() {
+            document.getElementById('qrModal').classList.add('hidden');
+        };
+
+        // Helper: Dashboard Stats Updater
+        function updateDashboardStats() {
+            document.getElementById('totalLinksCount').innerText = shortUrlsData.length;
+            const totalClicks = shortUrlsData.reduce((acc, curr) => acc + (curr.clickCount || 0), 0);
+            document.getElementById('totalClicksCount').innerText = totalClicks;
+        }
+
+        // Helper: Random Code Generator
+        function generateRandomCode(length) {
+            const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        // Helper: Clipboard Copy
+        window.copyTextToClipboard = function(text) {
+            if (!text) return;
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showToast("คัดลอก Short Link ลง Clipboard แล้ว!", "success");
+        };
+
+        // Helper: Toast Notifications
+        function showToast(message, type = "success") {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMessage.innerText = message;
+            if (type === "success") {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-base";
+            } else if (type === "error") {
+                toastIcon.className = "fa-solid fa-circle-xmark text-rose-400 text-base";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-info text-amber-400 text-base";
+            }
+
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        // Helper: HTML Escaper for XSS prevention
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // App Entry Point
+        window.onload = function() {
+            initApp();
+        };
+    </script>
+</body>
+</html>
