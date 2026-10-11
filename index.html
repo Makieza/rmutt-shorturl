@@ -142,7 +142,7 @@
                                 <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-xs font-mono">
                                     rmutt-shorturl.onrender.com/
                                 </span>
-                                <input type="text" id="customAlias" placeholder="my-custom-code" pattern="[a-zA-Z0-9-_]+" title="ใช้อักขระภาษาอังกฤษ ตัวเลข - หรือ _ เท่านั้น"
+                                <input type="text" id="customAlias" placeholder="my-custom-code" pattern="[a-zA-Z0-9_\-]+" title="ใช้อักขระภาษาอังกฤษ ตัวเลข - หรือ _ เท่านั้น"
                                     class="flex-1 min-w-0 block w-full px-3 py-2.5 rounded-none rounded-r-lg bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-rmutt-blue">
                             </div>
                         </div>
@@ -495,7 +495,13 @@
         // Helper: Check URL parameter and Auto-Redirect
         async function checkUrlParameterRedirect() {
             const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code') || urlParams.get('c') || window.location.hash.replace('#', '');
+            // รองรับทั้ง https://domain/abc123 (path) และ ?code=abc123 และ #abc123
+            let pathCode = '';
+            try {
+                pathCode = decodeURIComponent(window.location.pathname.replace(/^\/+|\/+$/g, ''));
+            } catch (e) { pathCode = ''; }
+            if (/^index\.html?$/i.test(pathCode) || pathCode.includes('/')) pathCode = '';
+            const code = pathCode || urlParams.get('code') || urlParams.get('c') || window.location.hash.replace('#', '');
 
             if (code) {
                 // Show redirection overlay
@@ -530,15 +536,23 @@
                         // Redirect to original URL
                         window.location.href = itemData.originalUrl;
                     } else {
-                        alert("ไม่พบข้อมูล Short Link รหัสนี้ในระบบ");
-                        window.location.href = window.location.pathname;
+                        showRedirectError("ไม่พบ Short Link รหัสนี้ในระบบ", code);
                     }
                 } catch (err) {
                     console.error("Redirect Error:", err);
-                    alert("เกิดข้อผิดพลาดในการเชื่อมต่อกรุณาลองใหม่อีกครั้ง");
-                    window.location.href = window.location.pathname;
+                    showRedirectError("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง", code);
                 }
             }
+        }
+
+        function showRedirectError(message, code) {
+            document.body.innerHTML = `
+                <div class="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 text-center space-y-4">
+                    <div class="text-5xl">🔗</div>
+                    <h2 class="text-xl font-bold">${escapeHtml(message)}</h2>
+                    <p class="text-sm text-slate-400">รหัสย่อ: <code class="text-amber-300 font-mono">${escapeHtml(code)}</code></p>
+                    <a href="/" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-lg text-sm">กลับหน้าแรก</a>
+                </div>`;
         }
 
         // Realtime Listener for URLs
@@ -967,15 +981,39 @@
         }
 
         // Helper: Clipboard Copy
-        window.copyTextToClipboard = function(text) {
+        window.copyTextToClipboard = async function(text) {
+            text = (text || '').trim();
             if (!text) return;
-            const tempInput = document.createElement('textarea');
-            tempInput.value = text;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempInput);
-            showToast("คัดลอก Short Link ลง Clipboard แล้ว!", "success");
+            let ok = false;
+
+            // วิธีที่ 1: Clipboard API (ต้องเป็น https)
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    ok = true;
+                }
+            } catch (e) { console.warn('Clipboard API failed:', e); }
+
+            // วิธีที่ 2: fallback ด้วย textarea + execCommand
+            if (!ok) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                ta.setSelectionRange(0, text.length);
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                document.body.removeChild(ta);
+            }
+
+            if (ok) {
+                showToast("คัดลอก Short Link ลง Clipboard แล้ว!", "success");
+            } else {
+                showToast("คัดลอกอัตโนมัติไม่ได้ กรุณาคัดลอกด้วยตนเอง", "error");
+                window.prompt("คัดลอกลิงก์นี้ (Ctrl+C / Cmd+C):", text);
+            }
         };
 
         // Helper: Toast Notifications
